@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trade Checklist</title>
+<title>Ultimate Trade Checklist</title>
 
 <style>
     :root {
@@ -28,18 +28,47 @@
         color: var(--text);
         font-family: Arial, sans-serif;
         margin: 0;
-        padding: 20px;
+        padding: 0;
         transition: 0.3s ease;
+        display: flex;
     }
 
-    .container {
-        max-width: 450px;
-        margin: auto;
+    /* Sidebar */
+    #sidebar {
+        width: 180px;
+        background: var(--card);
+        height: 100vh;
+        padding: 15px;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.15);
+        position: fixed;
+        left: 0;
+        top: 0;
     }
-
-    h1 {
+    #sidebar h2 {
+        font-size: 1rem;
         text-align: center;
-        margin-bottom: 20px;
+    }
+    #tabs button {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0;
+        border: none;
+        border-radius: 8px;
+        background: var(--danger);
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    #tabs button.activeTab {
+        background: var(--accent);
+    }
+
+    /* Main */
+    .main {
+        margin-left: 200px;
+        padding: 20px;
+        width: 100%;
     }
 
     .item {
@@ -54,25 +83,8 @@
         border-left: 6px solid var(--danger);
         transition: 0.3s ease;
     }
-
-    .item.active {
-        border-left-color: var(--accent);
-        transform: scale(1.02);
-    }
-
-    .item.pending {
-        border-left-color: var(--warning);
-    }
-
-    label {
-        font-size: 1.1rem;
-        font-weight: bold;
-    }
-
-    input {
-        transform: scale(1.4);
-        cursor: pointer;
-    }
+    .item.active { border-left-color: var(--accent); transform: scale(1.02); }
+    .item.pending { border-left-color: var(--warning); }
 
     #scoreBox {
         margin-top: 20px;
@@ -85,7 +97,19 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
-    /* Toggle dark mode button */
+    #resetAll {
+        margin-top: 20px;
+        width: 100%;
+        padding: 10px;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+
     .toggle {
         position: fixed;
         top: 15px;
@@ -96,40 +120,42 @@
         border-radius: 8px;
         cursor: pointer;
         font-weight: bold;
-        color: var(--text);
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 </style>
-
 </head>
+
 <body>
+
+<div id="sidebar">
+    <h2>Checklists</h2>
+    <div id="tabs"></div>
+    <button onclick="addChecklist()">+ Add Chart</button>
+    <button id="resetAll" onclick="resetAll()">RESET ALL</button>
+</div>
 
 <button class="toggle" onclick="toggleMode()">Dark/Light</button>
 
-<div class="container">
-    <h1>Trade Checklist</h1>
+<div class="main">
+    <h1 id="title">Chart Checklist</h1>
 
-    <div class="item" id="liquidity-box">
+    <div class="item" id="liquidity-box" onclick="toggleCheck('liquidity')">
         <label>Liquidity Swept</label>
         <input type="checkbox" id="liquidity" onchange="updateScore()">
     </div>
-
-    <div class="item" id="mss-box">
+    <div class="item" id="mss-box" onclick="toggleCheck('mss')">
         <label>MSS (Market Structure Shift)</label>
         <input type="checkbox" id="mss" onchange="updateScore()">
     </div>
-
-    <div class="item" id="fvg-box">
+    <div class="item" id="fvg-box" onclick="toggleCheck('fvg')">
         <label>FVG Formed</label>
         <input type="checkbox" id="fvg" onchange="updateScore()">
     </div>
-
-    <div class="item" id="return-box">
+    <div class="item" id="return-box" onclick="toggleCheck('return')">
         <label>Price Returns to FVG</label>
         <input type="checkbox" id="return" onchange="updateScore()">
     </div>
-
-    <div class="item" id="reject-box">
+    <div class="item" id="reject-box" onclick="toggleCheck('reject')">
         <label>Rejection Candle</label>
         <input type="checkbox" id="reject" onchange="updateScore()">
     </div>
@@ -138,40 +164,76 @@
 </div>
 
 <script>
-function updateScore() {
-    let boxes = [
-        { id: "liquidity", box: "liquidity-box" },
-        { id: "mss", box: "mss-box" },
-        { id: "fvg", box: "fvg-box" },
-        { id: "return", box: "return-box" },
-        { id: "reject", box: "reject-box" }
-    ];
+let active = 0;
+let checklists = [
+    { name: "US500", states: [0,0,0,0,0] },
+    { name: "US100", states: [0,0,0,0,0] },
+    { name: "DXY", states: [0,0,0,0,0] },
+    { name: "GOLD", states: [0,0,0,0,0] }
+];
 
-    let score = 0;
-    boxes.forEach(b => {
-        let checkbox = document.getElementById(b.id);
-        let card = document.getElementById(b.box);
+function renderTabs() {
+    let t = "";
+    checklists.forEach((c,i)=>{
+        t += `<button class="${i===active?"activeTab":""}" onclick="switchTab(${i})">${c.name}</button>`;
+    });
+    document.getElementById("tabs").innerHTML = t;
+}
 
-        if (checkbox.checked) {
-            card.classList.add("active");
-            card.classList.remove("pending");
-            score++;
-        } else {
-            card.classList.remove("active");
-            card.classList.add("pending");
-        }
+function switchTab(i){ active=i; save(); loadChecklist(); renderTabs(); }
+
+function loadChecklist(){
+    document.getElementById("title").innerText = checklists[active].name;
+    let s = checklists[active].states;
+    ["liquidity","mss","fvg","return","reject"].forEach((id,idx)=>{
+        document.getElementById(id).checked = s[idx]===1;
+    });
+    updateScore();
+}
+
+function updateScore(){
+    let ids = ["liquidity","mss","fvg","return","reject"];
+    let count = 0;
+    ids.forEach((id,idx)=>{
+        let box = document.getElementById(id);
+        checklists[active].states[idx] = box.checked?1:0;
+        let card = document.getElementById(id+"-box");
+        if(box.checked){ card.classList.add("active"); card.classList.remove("pending"); count++; navigator.vibrate(30);} 
+        else { card.classList.add("pending"); card.classList.remove("active"); }
     });
 
-    let percent = Math.round((score / boxes.length) * 100);
-    let scoreBox = document.getElementById("scoreBox");
-    scoreBox.innerText = "Setup Strength: " + percent + "%";
+    let p = Math.round((count/5)*100);
+    document.getElementById("scoreBox").innerText = "Setup Strength: "+p+"%";
+    save();
 }
 
-function toggleMode() {
-    document.body.classList.toggle("dark");
+function addChecklist(){
+    let name = prompt("Name this chart:", "New Chart");
+    if(!name) return;
+    checklists.push({name:name,states:[0,0,0,0,0]});
+    save(); renderTabs();
 }
+
+function resetAll(){
+    if(!confirm("Reset ALL checklists?")) return;
+    checklists.forEach(c=> c.states=[0,0,0,0,0]);
+    save(); loadChecklist(); renderTabs();
+}
+
+function save(){ localStorage.setItem("checklists", JSON.stringify(checklists)); }
+
+function load(){ let data = localStorage.getItem("checklists"); if(data) checklists = JSON.parse(data); }
+
+function toggleCheck(id){
+    const box=document.getElementById(id);
+    box.checked = !box.checked;
+    updateScore();
+}
+
+function toggleMode(){ document.body.classList.toggle("dark"); }
+
+load(); renderTabs(); loadChecklist();
 </script>
 
 </body>
 </html>
-
