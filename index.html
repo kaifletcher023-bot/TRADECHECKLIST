@@ -14,6 +14,7 @@
         --warning: #e6b800;
         --danger: #d9534f;
     }
+
     body.dark {
         --bg: #0d1117;
         --card: #161b22;
@@ -23,22 +24,22 @@
     body {
         background: var(--bg);
         color: var(--text);
-        font-family: Arial, sans-serif;
         margin: 0;
         padding: 0;
-        transition: 0.3s ease;
+        font-family: Arial;
         display: flex;
+        transition: .3s ease;
     }
 
     #sidebar {
-        width: 200px;
-        background: var(--card);
+        width: 220px;
         height: 100vh;
-        padding: 15px;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.15);
+        background: var(--card);
+        box-shadow: 2px 0 10px rgba(0,0,0,.15);
         position: fixed;
         left: 0;
         top: 0;
+        padding: 15px;
         overflow-y: auto;
     }
 
@@ -49,9 +50,10 @@
         border: none;
         border-radius: 8px;
         background: var(--danger);
-        color: white;
+        color: #fff;
         font-weight: bold;
         cursor: pointer;
+        transition: .2s;
     }
 
     #tabs button.activeTab {
@@ -59,7 +61,7 @@
     }
 
     .main {
-        margin-left: 220px;
+        margin-left: 240px;
         padding: 20px;
         width: 100%;
     }
@@ -73,37 +75,35 @@
         justify-content: space-between;
         align-items: center;
         border-left: 6px solid var(--danger);
-        transition: 0.3s ease;
+        transition: .2s ease;
+        cursor: pointer;
     }
 
-    .item.active {
-        border-left-color: var(--accent);
-    }
+    .item.active { border-left-color: var(--accent); }
+    .item.pending { border-left-color: var(--warning); }
 
-    .item.pending {
-        border-left-color: var(--warning);
-    }
+    .item input { pointer-events: none; }
 
     #scoreBox {
         margin-top: 20px;
-        text-align: center;
         font-size: 1.4rem;
         font-weight: bold;
+        background: var(--card);
         padding: 15px;
         border-radius: 10px;
-        background: var(--card);
+        text-align: center;
     }
 
     #tradeReady {
-        margin-top: 20px;
         display: none;
+        margin-top: 20px;
         padding: 15px;
+        text-align: center;
         background: #4CAF50;
         color: white;
+        border-radius: 10px;
         font-size: 1.4rem;
         font-weight: bold;
-        text-align: center;
-        border-radius: 10px;
     }
 
     .toggle {
@@ -111,8 +111,8 @@
         top: 15px;
         right: 15px;
         background: var(--card);
-        border: none;
         padding: 10px 18px;
+        border: none;
         border-radius: 8px;
         cursor: pointer;
         font-weight: bold;
@@ -172,22 +172,26 @@ let checklists = [
     { name: "GOLD", states: [0,0,0,0,0] }
 ];
 
-function renderTabs() {
-    let t = "";
+function save(){ localStorage.setItem("checklists", JSON.stringify(checklists)); }
+function load(){
+    let data = localStorage.getItem("checklists");
+    if(data) checklists = JSON.parse(data);
+}
+
+function renderTabs(){
+    let html = "";
     checklists.forEach((c,i)=>{
-        let percent = Math.round((c.states.reduce((a,b)=>a+b,0)/5)*100);
-        t += `<button class="${i===active?"activeTab":""}" onclick="switchTab(${i})">${c.name} (${percent}%)</button>`;
+        let pct = Math.round((c.states.reduce((a,b)=>a+b,0)/5)*100);
+        html += `<button class="${i===active?'activeTab':''}" onclick="switchTab(${i})">${c.name} (${pct}%)</button>`;
     });
-    document.getElementById("tabs").innerHTML = t;
+    document.getElementById("tabs").innerHTML = html;
 }
 
-function toggleCheck(id){
-    const box=document.getElementById(id);
-    box.checked = !box.checked;
-    updateScore();
+function switchTab(i){
+    active = i;
+    loadChecklist();
+    renderTabs();
 }
-
-function switchTab(i){ active=i; save(); loadChecklist(); renderTabs(); }
 
 function loadChecklist(){
     document.getElementById("title").innerText = checklists[active].name;
@@ -198,38 +202,73 @@ function loadChecklist(){
     updateScore();
 }
 
+function toggleCheck(id){
+    let box = document.getElementById(id);
+    box.checked = !box.checked;
+    updateScore();
+}
+
 function updateScore(){
     let ids = ["liquidity","mss","fvg","return","reject"];
     let count = 0;
+
     ids.forEach((id,idx)=>{
         let box = document.getElementById(id);
-        checklists[active].states[idx] = box.checked?1:0;
+        checklists[active].states[idx] = box.checked ? 1 : 0;
+
         let card = document.getElementById(id+"-box");
-        if(box.checked){ card.classList.add("active"); card.classList.remove("pending"); count++; } 
-        else { card.classList.add("pending"); card.classList.remove("active"); }
+        if(box.checked){
+            card.classList.add("active");
+            card.classList.remove("pending");
+            count++;
+            navigator.vibrate(20);
+        } else {
+            card.classList.add("pending");
+            card.classList.remove("active");
+        }
     });
 
-    let p = Math.round((count/5)*100);
-    document.getElementById("scoreBox").innerText = "Setup Strength: "+p+"%";
+    let pct = Math.round((count/5)*100);
+    document.getElementById("scoreBox").innerText = "Setup Strength: "+pct+"%";
 
-    checkTradeReady();
+    let ready = checklists[active].states.every(v=>v===1);
+    document.getElementById("tradeReady").style.display = ready ? "block" : "none";
+
     save();
     renderTabs();
 }
 
-function checkTradeReady(){
-    let s = checklists[active].states;
-    let ready = s.every(v=>v===1);
-    document.getElementById("tradeReady").style.display = ready ? "block" : "none";
-}
-
 function renameTitle(){
-    let name = prompt("Rename chart:", checklists[active].name);
+    let name = prompt("Rename Chart:", checklists[active].name);
     if(!name) return;
     checklists[active].name = name;
-    document.getElementById("title").innerText = name;
-    renderTabs(); save();
+    save();
+    renderTabs();
+    loadChecklist();
 }
 
 function addChecklist(){
     let name = prompt("Name this chart:", "New Chart");
+    if(!name) return;
+    checklists.push({name:name, states:[0,0,0,0,0]});
+    save();
+    renderTabs();
+}
+
+function resetAll(){
+    if(!confirm("Reset ALL charts?")) return;
+    checklists.forEach(c=> c.states=[0,0,0,0,0]);
+    save();
+    loadChecklist();
+    renderTabs();
+}
+
+function toggleMode(){ document.body.classList.toggle("dark"); }
+
+load();
+renderTabs();
+loadChecklist();
+</script>
+
+</body>
+</html>
