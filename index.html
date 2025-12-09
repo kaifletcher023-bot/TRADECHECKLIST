@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ultimate Trade Checklist</title>
+<title>Liquidity Checklist</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4CAF50">
 
 <style>
     :root {
@@ -28,24 +31,25 @@
         padding: 0;
         font-family: Arial;
         display: flex;
+        transition: .3s;
     }
 
     #sidebar {
         width: 220px;
         height: 100vh;
         background: var(--card);
-        box-shadow: 2px 0 10px rgba(0,0,0,.15);
         position: fixed;
         left: 0;
         top: 0;
         padding: 15px;
+        box-shadow: 2px 0 10px rgba(0,0,0,.15);
         overflow-y: auto;
     }
 
     #tabs button {
         width: 100%;
         padding: 10px;
-        margin: 5px 0;
+        margin: 6px 0;
         border: none;
         border-radius: 8px;
         background: var(--danger);
@@ -67,49 +71,48 @@
         background: var(--card);
         padding: 15px;
         margin-bottom: 12px;
-        border-radius: 10px;
+        border-left: 6px solid var(--danger);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-left: 6px solid var(--danger);
-        transition: .2s ease;
+        border-radius: 10px;
         cursor: pointer;
+        transition: .2s;
     }
 
     .item.active { border-left-color: var(--accent); }
     .item.pending { border-left-color: var(--warning); }
-
     .item input { pointer-events: none; }
 
     #scoreBox {
         margin-top: 20px;
-        font-size: 1.4rem;
-        font-weight: bold;
-        background: var(--card);
         padding: 15px;
+        background: var(--card);
         border-radius: 10px;
+        font-size: 1.4rem;
         text-align: center;
+        font-weight: bold;
     }
 
     #tradeReady {
         display: none;
         margin-top: 20px;
         padding: 15px;
-        text-align: center;
         background: #4CAF50;
         color: white;
-        border-radius: 10px;
         font-size: 1.4rem;
         font-weight: bold;
+        border-radius: 10px;
+        text-align: center;
     }
 
     .toggle {
         position: fixed;
         top: 15px;
         right: 15px;
-        background: var(--card);
         padding: 10px 18px;
         border: none;
+        background: var(--card);
         border-radius: 8px;
         cursor: pointer;
         font-weight: bold;
@@ -163,10 +166,10 @@
 <script>
 let active = 0;
 let checklists = [
-    { name: "US500", states: [0,0,0,0,0] },
-    { name: "US100", states: [0,0,0,0,0] },
-    { name: "DXY", states: [0,0,0,0,0] },
-    { name: "GOLD", states: [0,0,0,0,0] }
+    { name: "US500", states:[0,0,0,0,0] },
+    { name: "US100", states:[0,0,0,0,0] },
+    { name: "DXY", states:[0,0,0,0,0] },
+    { name: "GOLD", states:[0,0,0,0,0] }
 ];
 
 function save(){ localStorage.setItem("checklists", JSON.stringify(checklists)); }
@@ -176,16 +179,16 @@ function load(){
 }
 
 function renderTabs(){
-    let html = "";
+    let t="";
     checklists.forEach((c,i)=>{
-        let pct = Math.round((c.states.reduce((a,b)=>a+b,0)/5)*100);
-        html += `<button class="${i===active?'activeTab':''}" onclick="switchTab(${i})">${c.name} (${pct}%)</button>`;
+        let pct=Math.round((c.states.reduce((a,b)=>a+b,0)/5)*100);
+        t+=`<button class="${i===active?'activeTab':''}" onclick="switchTab(${i})">${c.name} (${pct}%)</button>`;
     });
-    document.getElementById("tabs").innerHTML = html;
+    document.getElementById("tabs").innerHTML=t;
 }
 
 function switchTab(i){
-    active = i;
+    active=i;
     loadChecklist();
     renderTabs();
 }
@@ -202,14 +205,14 @@ function loadChecklist(){
 }
 
 function updateScore(){
-    let ids = ["liquidity","mss","fvg","return","reject"];
-    let count = 0;
+    let ids=["liquidity","mss","fvg","return","reject"];
+    let count=0;
 
     ids.forEach((id,idx)=>{
-        let box = document.getElementById(id);
-        checklists[active].states[idx] = box.checked ? 1 : 0;
+        let box=document.getElementById(id);
+        checklists[active].states[idx]=box.checked?1:0;
 
-        let card = document.getElementById(id+"-box");
+        let card=document.getElementById(id+"-box");
         if(box.checked){
             card.classList.add("active");
             card.classList.remove("pending");
@@ -220,8 +223,8 @@ function updateScore(){
         }
     });
 
-    let pct = Math.round((count/5)*100);
-    document.getElementById("scoreBox").innerText = "Setup Strength: "+pct+"%";
+    let pct=Math.round((count/5)*100);
+    document.getElementById("scoreBox").innerText="Setup Strength: "+pct+"%";
 
     document.getElementById("tradeReady").style.display =
         checklists[active].states.every(v=>v===1) ? "block" : "none";
@@ -233,25 +236,33 @@ function updateScore(){
 function renameTitle(){
     let name = prompt("Rename Chart:", checklists[active].name);
     if(!name) return;
-    checklists[active].name = name;
+    checklists[active].name=name;
     save();
     renderTabs();
     loadChecklist();
 }
-
 document.getElementById("title").addEventListener("click", renameTitle);
 
+document.querySelectorAll(".item").forEach(item=>{
+    item.addEventListener("click", ()=>{
+        let box=item.querySelector("input");
+        box.checked=!box.checked;
+        updateScore();
+        navigator.vibrate(20);
+    });
+});
+
 function addChecklist(){
-    let name = prompt("Name this chart:", "New Chart");
+    let name=prompt("Name this chart:","New Chart");
     if(!name) return;
-    checklists.push({name:name, states:[0,0,0,0,0]});
+    checklists.push({name:name,states:[0,0,0,0,0]});
     save();
     renderTabs();
 }
 
 function resetAll(){
     if(!confirm("Reset ALL charts?")) return;
-    checklists.forEach(c=> c.states=[0,0,0,0,0]);
+    checklists.forEach(c=>c.states=[0,0,0,0,0]);
     save();
     loadChecklist();
     renderTabs();
@@ -259,18 +270,14 @@ function resetAll(){
 
 function toggleMode(){ document.body.classList.toggle("dark"); }
 
-document.querySelectorAll(".item").forEach(item=>{
-    item.addEventListener("click", ()=>{
-        let check = item.querySelector("input");
-        check.checked = !check.checked;
-        updateScore();
-        navigator.vibrate(20);
-    });
-});
-
 load();
 renderTabs();
 loadChecklist();
+
+// Register service worker
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
 </script>
 
 </body>
